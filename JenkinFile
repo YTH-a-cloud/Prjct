@@ -3,8 +3,11 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                // Pulling source code from your specific GitHub repository
-                git branch: 'main', url: 'https://github.com/YTH-a-cloud/Prjct.git'
+                // When using Pipeline from SCM, Jenkins automatically 
+                // checks out the repo code into the workspace prior to execution.
+                // We can add a simple verification command here:
+                sh 'echo "Successfully checked out code via SCM Jenkinsfile"'
+                sh 'ls -la'
             }
         }
     }
