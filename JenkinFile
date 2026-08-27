@@ -9,15 +9,48 @@ pipeline {
         stage('Build') {
             steps {
                 script {
-                    // Define meaningful image parameters
-                    // BUILD_NUMBER is a built-in Jenkins environment variable that increments per build
                     env.IMAGE_NAME = "my-web-app"
                     env.IMAGE_TAG = "${env.BUILD_NUMBER}"
-                    
                     echo "Building Docker image: ${env.IMAGE_NAME}:${env.IMAGE_TAG}..."
-                    
-                    // Execute the docker build command pointing to the current workspace (.)
                     sh "docker build -t ${env.IMAGE_NAME}:${env.IMAGE_TAG} -t ${env.IMAGE_NAME}:latest ."
+                }
+            }
+        }
+        stage('Test') {
+            steps {
+                script {
+                    // Use a unique container name tied to the build number to prevent collisions
+                    def testContainerName = "test-web-app-${env.BUILD_NUMBER}"
+                    
+                    try {
+                        echo "--- Requirement 1: Starting test container ---"
+                        sh "docker run -d --name ${testContainerName} -p 8080:80 ${env.IMAGE_NAME}:${env.IMAGE_TAG}"
+                        
+                        echo "--- Requirement 2: Verifying container starts successfully ---"
+                        // Check if container is running via docker inspect or ps
+                        sh "docker ps --filter name=${testContainerName} --filter status=running --format '{{.Names}}' | grep -q ${testContainerName}"
+                        echo "Container is up and running."
+
+                        // Small sleep to let the web server fully initialize sockets if needed
+                        sleep 2
+
+                        echo "--- Requirement 3: Verifying application is responding ---"
+                        // Curl the application and ensure it returns a successful HTTP status
+                        sh "curl -I http://localhost:8080"
+                        
+                        echo "Container and application tests passed successfully!"
+                        
+                    } catch (Exception e) {
+                        echo "ERROR: Test failed during container startup or application check."
+                        // Explicitly fail the pipeline
+                        error("Pipeline aborted: Application health check failed.")
+                        
+                    } finally {
+                        echo "--- Requirement 4: Stopping and removing the test container ---"
+                        // The '|| true' ensures that even if the stop command fails because the container 
+                        // never started, the pipeline won't crash during the cleanup phase.
+                        sh "docker rm -f ${testContainerName} || true"
+                    }
                 }
             }
         }
