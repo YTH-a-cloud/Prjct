@@ -3,11 +3,22 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                // When using Pipeline from SCM, Jenkins automatically 
-                // checks out the repo code into the workspace prior to execution.
-                // We can add a simple verification command here:
-                sh 'echo "Successfully checked out code via SCM Jenkinsfile"'
-                sh 'ls -la'
+                echo "Code checked out successfully via SCM Jenkinsfile"
+            }
+        }
+        stage('Build') {
+            steps {
+                script {
+                    // Define meaningful image parameters
+                    // BUILD_NUMBER is a built-in Jenkins environment variable that increments per build
+                    env.IMAGE_NAME = "my-web-app"
+                    env.IMAGE_TAG = "${env.BUILD_NUMBER}"
+                    
+                    echo "Building Docker image: ${env.IMAGE_NAME}:${env.IMAGE_TAG}..."
+                    
+                    // Execute the docker build command pointing to the current workspace (.)
+                    sh "docker build -t ${env.IMAGE_NAME}:${env.IMAGE_TAG} -t ${env.IMAGE_NAME}:latest ."
+                }
             }
         }
     }
