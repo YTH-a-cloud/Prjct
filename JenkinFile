@@ -36,7 +36,7 @@ pipeline {
 
                         echo "--- Requirement 3: Verifying application is responding ---"
                         // Curl the application and ensure it returns a successful HTTP status
-                        sh "curl -I http://localhost:8080"
+                        sh "curl -I http://localhost:8083"
                         
                         echo "Container and application tests passed successfully!"
                         
