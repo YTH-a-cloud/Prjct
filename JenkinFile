@@ -24,7 +24,7 @@ pipeline {
                     
                     try {
                         echo "--- Requirement 1: Starting test container ---"
-                        sh "docker run -d --name ${testContainerName} -p 8080:80 ${env.IMAGE_NAME}:${env.IMAGE_TAG}"
+                        sh "docker run -d --name ${testContainerName} -p 8083:80 ${env.IMAGE_NAME}:${env.IMAGE_TAG}"
                         
                         echo "--- Requirement 2: Verifying container starts successfully ---"
                         // Check if container is running via docker inspect or ps
