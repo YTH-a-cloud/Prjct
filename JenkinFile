@@ -1,0 +1,11 @@
+pipeline {
+    agent any
+    stages {
+        stage('Checkout') {
+            steps {
+                // Pulling source code from your specific GitHub repository
+                git branch: 'main', url: 'https://github.com/YTH-a-cloud/Prjct.git'
+            }
+        }
+    }
+}
