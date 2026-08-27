@@ -9,9 +9,13 @@ pipeline {
         stage('Build') {
             steps {
                 script {
+                    // Define meaningful image parameters
                     env.IMAGE_NAME = "my-web-app"
                     env.IMAGE_TAG = "${env.BUILD_NUMBER}"
+                    
                     echo "Building Docker image: ${env.IMAGE_NAME}:${env.IMAGE_TAG}..."
+                    
+                    // Build the image using the Dockerfile in the current workspace
                     sh "docker build -t ${env.IMAGE_NAME}:${env.IMAGE_TAG} -t ${env.IMAGE_NAME}:latest ."
                 }
             }
@@ -19,38 +23,55 @@ pipeline {
         stage('Test') {
             steps {
                 script {
-                    // Use a unique container name tied to the build number to prevent collisions
                     def testContainerName = "test-web-app-${env.BUILD_NUMBER}"
+                    def testPort = "8083"
                     
                     try {
                         echo "--- Requirement 1: Starting test container ---"
-                        sh "docker run -d --name ${testContainerName} -p 8083:80 ${env.IMAGE_NAME}:${env.IMAGE_TAG}"
+                        sh "docker run -d --name ${testContainerName} -p ${testPort}:80 ${env.IMAGE_NAME}:${env.IMAGE_TAG}"
                         
                         echo "--- Requirement 2: Verifying container starts successfully ---"
-                        // Check if container is running via docker inspect or ps
                         sh "docker ps --filter name=${testContainerName} --filter status=running --format '{{.Names}}' | grep -q ${testContainerName}"
                         echo "Container is up and running."
 
-                        // Small sleep to let the web server fully initialize sockets if needed
+                        // Small sleep to ensure the server socket is listening
                         sleep 2
 
                         echo "--- Requirement 3: Verifying application is responding ---"
-                        // Curl the application and ensure it returns a successful HTTP status
-                        sh "curl -I http://localhost:8083"
+                        sh "curl -I http://localhost:${testPort}"
                         
                         echo "Container and application tests passed successfully!"
                         
                     } catch (Exception e) {
                         echo "ERROR: Test failed during container startup or application check."
-                        // Explicitly fail the pipeline
                         error("Pipeline aborted: Application health check failed.")
                         
                     } finally {
                         echo "--- Requirement 4: Stopping and removing the test container ---"
-                        // The '|| true' ensures that even if the stop command fails because the container 
-                        // never started, the pipeline won't crash during the cleanup phase.
                         sh "docker rm -f ${testContainerName} || true"
                     }
+                }
+            }
+        }
+        stage('Deploy') {
+            steps {
+                script {
+                    def prodContainerName = "my-web-app-prod"
+                    def prodPort = "80" // Standard HTTP port for production traffic
+                    
+                    echo "--- Starting Deployment ---"
+                    
+                    // 1. Stop and remove any existing old production container to prevent port/name conflicts
+                    sh "docker rm -f ${prodContainerName} || true"
+                    
+                    // 2. Run the new production container persistently in the background
+                    sh "docker run -d --name ${prodContainerName} -p ${prodPort}:80 ${env.IMAGE_NAME}:${env.IMAGE_TAG}"
+                    
+                    echo "--- Verifying Production Deployment ---"
+                    // 3. Verify that the production application is responding
+                    sh "curl -I http://localhost:${prodPort}"
+                    
+                    echo "Application successfully deployed and accessible!"
                 }
             }
         }
